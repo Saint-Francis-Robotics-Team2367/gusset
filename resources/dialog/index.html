@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gusset</title>
+<!--
+  Gusset's message window (errors + update prompts). Runs inside a Fusion palette.
+  Python -> page : fusionJavaScriptHandler.handle(action, json)
+  page -> Python : adsk.fusionSendData(action, json)
+  Console lines start with [Gusset dialog].
+-->
+<style>
+  :root { --bg:#f6f7f9; --card:#ffffff; --text:#1f2328; --dim:#5f6873; --line:#d9dde3; --accent:#d9831c;
+          --accent-text:#fff; --bad:#c2410c; --good:#2f8f4e; --code:#f0f2f5; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#25272b; --card:#2e3136; --text:#e8e9eb; --dim:#a3a9b1; --line:#454a52; --accent:#f2a33a;
+            --accent-text:#1d1d1d; --bad:#f08a5d; --good:#6fcf8f; --code:#1f2124; }
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text);
+               font:14px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .card { background:var(--card); margin:12px; padding:18px 20px 16px; border:1px solid var(--line); border-radius:10px; }
+  .head { display:flex; gap:12px; align-items:flex-start; }
+  .icon { flex:0 0 32px; height:32px; }
+  h1 { font-size:16px; margin:2px 0 6px; }
+  .sub { color:var(--dim); font-size:12px; }
+  p { margin:8px 0; }
+  .hint { background:var(--code); border-radius:6px; padding:8px 10px; margin-top:10px; }
+  .hint b { display:block; font-size:12px; color:var(--dim); font-weight:600; margin-bottom:2px; }
+  details { margin-top:12px; border-top:1px solid var(--line); padding-top:8px; }
+  summary { cursor:pointer; color:var(--dim); font-size:13px; user-select:none; }
+  pre { background:var(--code); border-radius:6px; padding:10px; font:11px/1.4 Menlo, Consolas, monospace;
+        max-height:170px; overflow:auto; white-space:pre-wrap; word-break:break-word; margin:8px 0 0; }
+  ul { margin:6px 0 0 18px; padding:0; }
+  .buttons { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+  .spacer { flex:1; }
+  button { border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:6px;
+           padding:7px 12px; font-size:13px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-text); font-weight:600; }
+  .note { font-size:12px; color:var(--good); margin-left:4px; align-self:center; }
+  .spin { display:inline-block; width:14px; height:14px; border:2px solid var(--line); border-top-color:var(--accent);
+          border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:-2px; margin-right:6px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<div class="card" id="card"><p class="sub">Loading...</p></div>
+
+<script>
+"use strict";
+const LOG = (...a) => console.log("[Gusset dialog]", ...a);
+let current = {};
+
+function send(action, data) {
+  try { if (window.adsk && window.adsk.fusionSendData) window.adsk.fusionSendData(action, JSON.stringify(data || {})); }
+  catch (e) { LOG("send failed", e); }
+}
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+const ICON_WARN = '<svg class="icon" viewBox="0 0 32 32"><path d="M16 3 L30 28 H2 Z" fill="#f2a33a"/><rect x="14.6" y="11" width="2.8" height="9" rx="1.2" fill="#1d1d1d"/><circle cx="16" cy="23.6" r="1.7" fill="#1d1d1d"/></svg>';
+const ICON_UP = '<svg class="icon" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#2f8f4e"/><path d="M16 8 L23 16 H18.5 V24 H13.5 V16 H9 Z" fill="#fff"/></svg>';
+
+function card(html) { document.getElementById("card").innerHTML = html; }
+
+// ---------- error ----------
+function showError(d) {
+  current = d;
+  card(
+    '<div class="head">' + ICON_WARN + '<div><h1>' + esc(d.title) + '</h1>' +
+    '<div class="sub">' + esc(d.tool ? d.tool + " · " : "") + 'Gusset ' + esc(d.version) + '</div></div></div>' +
+    '<p>' + esc(d.summary) + '</p>' +
+    '<div class="hint"><b>What to try</b>' + esc(d.hint) + '</div>' +
+    '<details><summary>Technical details (for mentors)</summary><pre id="trace">' + esc(d.details || "No details.") + '</pre></details>' +
+    '<div class="buttons">' +
+      '<button id="copy">Copy details</button>' +
+      '<button id="log">Open log folder</button>' +
+      (d.canReport ? '<button id="report">Report problem</button>' : '') +
+      '<span class="note hidden" id="copied">Copied</span>' +
+      '<span class="spacer"></span><button class="primary" id="close">Close</button>' +
+    '</div>');
+  document.getElementById("copy").onclick = () => copyText(d.copy || d.details);
+  document.getElementById("log").onclick = () => send("openLog");
+  if (d.canReport) document.getElementById("report").onclick = () => send("report");
+  document.getElementById("close").onclick = () => send("close");
+  send("shown", { id: d.id });
+}
+
+function copyText(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) { LOG("copy failed", e); }
+  ta.remove();
+  if (!ok && navigator.clipboard) { navigator.clipboard.writeText(text).then(() => { ok = true; }).catch(() => {}); ok = true; }
+  const n = document.getElementById("copied");
+  if (n) { n.textContent = ok ? "Copied" : "Couldn't copy - select the text instead"; n.classList.remove("hidden"); }
+}
+
+// ---------- update ----------
+function showUpdate(d) {
+  current = d;
+  const notes = (d.notes || []).map(n => "<li>" + esc(n) + "</li>").join("");
+  card(
+    '<div class="head">' + ICON_UP + '<div><h1>Gusset ' + esc(d.version) + ' is ready</h1>' +
+    '<div class="sub">You have ' + esc(d.current) + (d.released ? " · released " + esc(d.released) : "") + '</div></div></div>' +
+    (notes ? '<p><b>What\'s new</b></p><ul>' + notes + '</ul>' : '<p>A newer version of Gusset is available.</p>') +
+    '<p class="sub">Takes about 10 seconds. Your settings and your work aren\'t touched.</p>' +
+    '<div class="buttons"><button id="skip">Skip this version</button><span class="spacer"></span>' +
+    '<button id="later">Later</button><button class="primary" id="go">Update now</button></div>');
+  document.getElementById("skip").onclick = () => send("skip");
+  document.getElementById("later").onclick = () => send("later");
+  document.getElementById("go").onclick = () => send("update");
+  send("shown", { id: d.id });
+}
+function showInstalling(d) {
+  card('<div class="head">' + ICON_UP + '<div><h1>Updating to ' + esc(d.version) + '</h1></div></div>' +
+       '<p><span class="spin"></span>Downloading and installing... keep Fusion open.</p>');
+}
+function showInstalled(d) {
+  card('<div class="head">' + ICON_UP + '<div><h1>Gusset ' + esc(d.version) + ' is installed</h1></div></div>' +
+       '<p><b>Quit Fusion and open it again</b> to start using the new version. Save your work first.</p>' +
+       '<div class="buttons"><span class="spacer"></span><button class="primary" id="close">OK</button></div>');
+  document.getElementById("close").onclick = () => send("close");
+}
+function showInstallFailed(d) {
+  card('<div class="head">' + ICON_WARN + '<div><h1>The update didn\'t install</h1></div></div>' +
+       '<p>' + esc(d.summary) + '</p><div class="hint"><b>What to try</b>' + esc(d.hint) + '</div>' +
+       '<div class="buttons"><span class="spacer"></span><button class="primary" id="close">Close</button></div>');
+  document.getElementById("close").onclick = () => send("close");
+}
+
+window.fusionJavaScriptHandler = {
+  handle: function (action, data) {
+    try {
+      const d = JSON.parse(data || "{}");
+      LOG("<-", action);
+      if (action === "error") showError(d);
+      else if (action === "update") showUpdate(d);
+      else if (action === "installing") showInstalling(d);
+      else if (action === "installed") showInstalled(d);
+      else if (action === "installFailed") showInstallFailed(d);
+    } catch (e) { LOG("handle failed", action, e); return "FAILED"; }
+    return "OK";
+  }
+};
+(function wait(n) {
+  if (window.adsk && window.adsk.fusionSendData) { send("ready", {}); return; }
+  setTimeout(() => wait(n + 1), 150);
+})(0);
+</script>
+</body>
+</html>
