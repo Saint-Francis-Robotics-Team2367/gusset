@@ -1,0 +1,14 @@
+{
+  "autodeskProduct": "Fusion",
+  "type": "addin",
+  "id": "93274958-ea7b-40c8-a87b-2dcc6e7178e2",
+  "author": "Addison Raak",
+  "description": {
+    "": "Gusset: FRC tools for Fusion - team part numbers, naming checks, and more."
+  },
+  "version": "0.13.2",
+  "runOnStartup": true,
+  "supportedOS": "windows|mac",
+  "editEnabled": true,
+  "iconFilename": ""
+}

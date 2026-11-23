@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gusset Robot Weight</title>
+<!--
+  Gusset Robot Weight side panel - commands/robot_weight.py.
+  Python -> page: weight, status, prefs, empty.   page -> Python: ready, refresh {full}, find {key,name},
+  reallyDefault {key}, auto {on}, settings.   Console messages start with [Gusset Weight].
+-->
+<style>
+  :root { --bg:#25272b; --panel:#2e3136; --line:#454a52; --text:#e8e9eb; --dim:#9aa0a8; --accent:#f2a33a;
+          --ok:#4caf6a; --close:#e3a72f; --over:#e5604f; --bar:#3a3e45; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f4f5f7; --panel:#fff; --line:#d7dbe0; --text:#1f2328; --dim:#626a73; --bar:#e5e8ec; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding:10px 12px 8px; background:var(--panel); border-bottom:1px solid var(--line); }
+  .row { display:flex; align-items:center; gap:8px; }
+  .grow { flex:1; min-width:0; }
+  h1 { font-size:15px; margin:0; }
+  .dim { color:var(--dim); font-size:11px; }
+  button { border:1px solid var(--line); background:var(--panel); color:var(--text); border-radius:6px; padding:4px 9px;
+           font-size:12px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button:disabled { opacity:.5; }
+  main { padding:10px 12px 30px; }
+  .big { font-size:30px; font-weight:700; letter-spacing:-.5px; }
+  .bar { position:relative; height:14px; background:var(--bar); border-radius:7px; overflow:hidden; margin:6px 0 3px; }
+  .bar > i { position:absolute; left:0; top:0; bottom:0; border-radius:7px; }
+  .bar.thin { height:8px; }
+  .ok > i, i.ok { background:var(--ok); } .close > i, i.close { background:var(--close); } .over > i, i.over { background:var(--over); }
+  .status-ok { color:var(--ok); } .status-close { color:var(--close); } .status-over { color:var(--over); }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:9px 10px; margin-top:10px; }
+  h2 { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--dim); margin:0 0 6px; font-weight:600; }
+  .sub { margin:5px 0; }
+  .sub .bar { height:6px; margin:2px 0 0; }
+  .part { display:flex; gap:6px; padding:4px 0; border-top:1px solid var(--line); cursor:pointer; align-items:baseline; }
+  .part:first-of-type { border-top:0; }
+  .part:hover .n { color:var(--accent); }
+  .n { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .w { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .warn { border-color:var(--close); }
+  .warn h2 { color:var(--close); }
+  .x { font-size:10px; padding:1px 5px; }
+  .why { font-size:11px; color:var(--dim); margin-top:12px; }
+  #status { min-height:16px; }
+  #status.busy::before { content:""; display:inline-block; width:8px; height:8px; margin-right:6px; border-radius:50%;
+                         border:2px solid var(--accent); border-right-color:transparent; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .empty { text-align:center; color:var(--dim); padding:30px 10px; }
+  label.chk { display:flex; gap:5px; align-items:center; }
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><h1 class="grow">Robot Weight</h1><button id="refresh" title="Weigh the design again">&#8635; Refresh</button></div>
+  <div class="row" style="margin-top:4px"><span class="dim grow" id="design"></span>
+    <label class="chk dim" title="Weigh again every time you save"><input type="checkbox" id="auto" checked> on save</label></div>
+  <div class="dim" id="status"></div>
+</header>
+<main id="main"><div class="empty">Weighing...</div></main>
+<script>
+"use strict";
+const LOG = (...a) => console.log("[Gusset Weight]", ...a);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const lb = v => (Math.round(v * 10) / 10).toFixed(1) + " lb";
+let W = null, got = false;
+function send(a, d) { LOG("->", a, d || ""); try { window.adsk.fusionSendData(a, JSON.stringify(d || {})); } catch (e) { LOG("send failed", e); } }
+window.fusionJavaScriptHandler = { handle(action, data) {
+  try {
+    const d = JSON.parse(data || "{}");
+    if (action === "weight") { got = true; W = d; draw(); status("Weighed at " + d.when + " (" + d.seconds + "s)"); }
+    else if (action === "status") status(d.text, d.busy);
+    else if (action === "prefs") document.getElementById("auto").checked = !!d.auto;
+    else if (action === "empty") { got = true; document.getElementById("main").innerHTML = '<div class="empty">' + esc(d.text) + '</div>'; status(""); }
+  } catch (e) { LOG("handle error", action, e); return "FAILED"; }
+  return "OK";
+} };
+(function wait() { if (window.adsk && window.adsk.fusionSendData) send("ready"); else setTimeout(wait, 250); })();
+setInterval(() => { if (!got && window.adsk && window.adsk.fusionSendData) send("ready"); }, 5000);
+
+function status(t, busy) {
+  const el = document.getElementById("status"); el.textContent = t || ""; el.classList.toggle("busy", !!busy);
+  document.getElementById("refresh").disabled = !!busy;
+}
+function bar(value, limit, cls, thin) {
+  const pct = Math.max(0, Math.min(100, limit > 0 ? value / limit * 100 : 0));
+  return '<div class="bar ' + cls + (thin ? " thin" : "") + '"><i style="width:' + pct.toFixed(1) + '%"></i></div>';
+}
+function partRow(p, extra) {
+  return '<div class="part" data-key="' + esc(p.key) + '" data-name="' + esc(p.name) + '" title="Click to find it in the design">' +
+    '<span class="n">' + esc(p.name) + (p.qty > 1 ? ' <span class="dim">&times;' + p.qty + '</span>' : "") + '</span>' +
+    '<span class="w">' + lb(p.total) + '</span>' + (extra || "") + '</div>';
+}
+function draw() {
+  const d = W;
+  document.getElementById("design").textContent = d.design;
+  const words = { ok: "Under the limit", close: "Close to the limit", over: "Over the limit!" };
+  let h = '<div class="big status-' + d.status + '">' + lb(d.robot) + '</div>' +
+    '<div class="dim">robot, without bumpers and battery &middot; limit ' + d.limit + ' lb</div>' +
+    bar(d.robot, d.limit, d.status) +
+    '<div class="status-' + d.status + '"><b>' + words[d.status] + '</b> &mdash; ' + esc(d.headline.split(" - ")[1] || "") + '</div>' +
+    '<div style="margin-top:8px" class="row"><span class="grow">Robot + bumpers</span><span class="w status-' + d.bumperStatus + '">' +
+    lb(d.withBumpers) + ' / ' + d.limitWithBumpers + ' lb</span></div>' + bar(d.withBumpers, d.limitWithBumpers, d.bumperStatus, true) +
+    '<div class="dim">Bumpers ' + lb(d.bumpers) + ' &middot; battery ' + lb(d.battery) + ' (not counted)</div>';
+  if (d.unmeasuredCount)
+    h += '<section class="warn"><h2>' + d.unmeasuredCount + (d.unmeasuredCount === 1 ? ' part' : ' parts') + ' not weighed yet</h2><div class="dim">Weighing big designs takes time, so ' +
+      'a normal refresh stops after 30 seconds. The real weight is higher than shown.</div>' +
+      '<button id="full" style="margin-top:6px">Weigh every part</button></section>';
+  if (d.noMaterial.length)
+    h += '<section class="warn"><h2>' + d.noMaterial.length + (d.noMaterial.length === 1 ? ' part has' : ' parts have') + ' no material set</h2><div class="dim">Fusion guesses they\'re steel, ' +
+      'so their weight is probably wrong. Click one to find it, then right-click it &gt; Physical Material.</div>' +
+      d.noMaterial.slice(0, 15).map(p => partRow(p, ' <button class="x" data-really="' + esc(p.key) + '" title="It really is ' + esc(p.material || "steel") + ' - stop warning">it is ' + esc(p.material || "steel") + '</button>')).join("") +
+      (d.noMaterial.length > 15 ? '<div class="dim">+ ' + (d.noMaterial.length - 15) + ' more</div>' : "") + '</section>';
+  if (d.bySubsystem.length) {
+    const top = d.bySubsystem[0][1] || 1;
+    h += '<section><h2>By subsystem</h2>' + d.bySubsystem.map(([n, w]) =>
+      '<div class="sub"><div class="row"><span class="grow">' + esc(n) + '</span><span class="w">' + lb(w) + ' <span class="dim">' +
+      (d.robot ? Math.round(w / d.robot * 100) : 0) + '%</span></span></div>' + bar(w, top, "ok") + '</div>').join("") + '</section>';
+  }
+  if (d.heaviest.length)
+    h += '<section><h2>Heaviest parts</h2>' + d.heaviest.map(p => partRow(p)).join("") + '</section>';
+  h += '<div class="why"><b>Why it matters:</b> at inspection the robot is weighed without bumpers and the battery. Over the ' +
+    'limit means you can\'t play until it\'s lighter, so watch the heaviest parts early. Limits come from the game manual - ' +
+    '<a href="#" id="settings">change them in Settings</a> each Kickoff.</div>';
+  document.getElementById("main").innerHTML = h;
+}
+document.getElementById("refresh").onclick = () => send("refresh");
+document.getElementById("auto").onchange = e => send("auto", { on: e.target.checked });
+document.addEventListener("click", e => {
+  const t = e.target;
+  if (t.id === "full") { send("refresh", { full: true }); return; }
+  if (t.id === "settings") { e.preventDefault(); send("settings"); return; }
+  const really = t.getAttribute && t.getAttribute("data-really");
+  if (really) { e.stopPropagation(); send("reallyDefault", { key: really }); return; }
+  const row = t.closest && t.closest(".part");
+  if (row) send("find", { key: row.getAttribute("data-key"), name: row.getAttribute("data-name") });
+});
+</script>
+</body>
+</html>

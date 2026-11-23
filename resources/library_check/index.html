@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gusset Library Check</title>
+<!--
+  Gusset Library Check window (a Fusion palette) - commands/library_check.py.
+  Python -> page : state, status, result      page -> Python : ready, recheck, fix, fixAll,
+  saveDetails, ignore, unignore, revision, openPart, openLink
+  Everything is logged to the console with a [Gusset Check] prefix.
+-->
+<style>
+  :root { --bg:#25272b; --panel:#2e3136; --tile:#34383e; --line:#454a52; --text:#e8e9eb; --dim:#9aa0a8;
+          --accent:#f2a33a; --accent-text:#1d1d1d; --good:#4caf6a; --bad:#e5604f; --info:#5aa0e6; }
+  body.light { --bg:#f4f5f7; --panel:#ffffff; --tile:#ffffff; --line:#d7dbe0; --text:#1f2328; --dim:#626a73;
+               --accent:#d9831c; --accent-text:#ffffff; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--text); font:13px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding:10px 12px; background:var(--panel); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:2; }
+  h1 { font-size:16px; margin:0; }
+  .row { display:flex; gap:8px; align-items:center; }
+  .grow { flex:1; }
+  .sum { margin-top:4px; color:var(--dim); }
+  .pill { display:inline-block; border-radius:10px; padding:0 8px; font-weight:600; font-size:11px; margin-right:4px; }
+  .pill.fix { background:var(--bad); color:#fff; } .pill.info { background:var(--info); color:#fff; }
+  .pill.ok { background:var(--good); color:#fff; } .pill.tip { border:1px solid var(--line); color:var(--dim); }
+  button { border:1px solid var(--line); background:var(--tile); color:var(--text); border-radius:6px; padding:4px 9px;
+           cursor:pointer; font-size:12px; white-space:nowrap; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:var(--accent-text); border-color:var(--accent); font-weight:600; }
+  button:disabled { opacity:.5; cursor:default; }
+  .x { background:none; border:0; color:var(--dim); font-size:14px; padding:2px 6px; }
+  #bar { margin-top:8px; padding:6px 8px; border-radius:6px; display:none; }
+  #bar.ok { display:block; background:rgba(76,175,106,.18); border:1px solid var(--good); }
+  #bar.bad { display:block; background:rgba(229,96,79,.16); border:1px solid var(--bad); }
+  #status { color:var(--dim); font-size:11px; margin-top:6px; min-height:15px; }
+  #status.busy::before { content:""; display:inline-block; width:9px; height:9px; margin-right:6px; border-radius:50%;
+                         border:2px solid var(--accent); border-right-color:transparent; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  main { padding:10px 12px 40px; }
+  details { background:var(--panel); border:1px solid var(--line); border-radius:8px; margin-bottom:10px; }
+  summary { padding:8px 10px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:8px; list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8"; color:var(--dim); } details[open] summary::before { content:"\25BE"; }
+  .prob { border-top:1px solid var(--line); padding:8px 10px; display:flex; gap:8px; align-items:flex-start; }
+  .prob .t { font-weight:600; }
+  .prob .m { color:var(--dim); font-size:12px; }
+  .acts { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+  input[type=text], input[type=search] { padding:4px 6px; border-radius:5px; border:1px solid var(--line); background:var(--bg);
+           color:var(--text); font-size:12px; min-width:0; }
+  input.price { width:78px; } input.url { width:100%; } input.pn { width:120px; }
+  input.bad { border-color:var(--bad); }
+  .edit { display:flex; gap:6px; margin-top:5px; align-items:center; }
+  .linkish { color:var(--info); cursor:pointer; text-decoration:underline; font-size:11px; }
+  .great { text-align:center; padding:26px 10px; }
+  .great h2 { margin:6px 0; }
+  .rev { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px; margin-top:16px; }
+  .rev h3 { margin:0 0 4px; font-size:13px; }
+  .hit { display:flex; gap:8px; align-items:center; padding:5px 0; border-top:1px solid var(--line); }
+  .foot { color:var(--dim); font-size:11px; margin-top:12px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1 class="grow">Library Check</h1>
+    <button id="recheck" title="Read the FRC_COTS project again, then check every part">&#8635; Re-check</button>
+  </div>
+  <div class="sum" id="sum">Checking...</div>
+  <div id="bar"></div>
+  <div id="status"></div>
+</header>
+<main>
+  <div id="list"></div>
+  <div class="rev">
+    <h3>Vendor posted a new model?</h3>
+    <div class="m" style="color:var(--dim);font-size:12px">Find the part, then pick the new STEP file. Gusset saves a new
+      version of the library part and can update this robot's copy too.</div>
+    <input type="search" id="rq" placeholder="Part # or name, e.g. WCP-0712" style="width:100%;margin-top:6px">
+    <div id="hits"></div>
+  </div>
+  <div class="foot" id="foot"></div>
+</main>
+<script>
+"use strict";
+const LOG = (...a) => console.log("[Gusset Check]", ...a);
+const S = { problems: [], groups: [], summary: {}, parts: [], count: 0, ignored: 0, typed: {}, open: { duplicate: 1, broken: 1, picture: 1, naming: 1, details: 1 }, busy: false };
+const priceOk = v => /^\$?\s*\d[\d,]*(\.\d+)?$/.test(String(v).trim()) && parseFloat(String(v).replace(/[$,]/g, "")) > 0;
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function send(action, data) {
+  LOG("->", action, data || "");
+  try { return window.adsk.fusionSendData(action, JSON.stringify(data || {})); } catch (e) { LOG("send failed", e); }
+}
+window.fusionJavaScriptHandler = { handle: function (action, data) {
+  try {
+    const d = JSON.parse(data || "{}");
+    if (action === "state") onState(d);
+    else if (action === "status") status(d.text, d.busy);
+    else if (action === "result") result(d.ok, d.text);
+    else LOG("unknown action", action);
+  } catch (e) { LOG("handle error", action, e); return "FAILED"; }
+  return "OK";
+} };
+let got = false;
+(function wait(n) { if (window.adsk && window.adsk.fusionSendData) send("ready"); else setTimeout(() => wait(n + 1), 250); })(0);
+setInterval(() => { if (!got && window.adsk && window.adsk.fusionSendData) send("ready"); }, 4000);
+
+function onState(d) {
+  got = true;
+  Object.assign(S, { problems: d.problems || [], groups: d.groups || [], summary: d.summary || {}, parts: d.parts || [],
+                     count: d.count || 0, ignored: d.ignored || 0 });
+  document.body.classList.toggle("light", d.theme === "light");
+  // forget typed values for problems that are gone (saved)
+  const live = new Set(S.problems.map(p => p.file_id));
+  Object.keys(S.typed).forEach(id => { if (!live.has(id)) delete S.typed[id]; });
+  if (d.note) result(true, d.note);
+  setBusy(false);
+  render();
+}
+function status(t, busy) { const el = document.getElementById("status"); el.textContent = t || ""; el.classList.toggle("busy", !!busy); if (busy) setBusy(true); }
+function result(ok, text) { const b = document.getElementById("bar"); b.className = ok ? "ok" : "bad"; b.textContent = text || ""; if (!text) b.className = ""; setBusy(false); }
+function setBusy(on) { S.busy = on; document.querySelectorAll("button").forEach(b => b.disabled = on); }
+
+// ---------- drawing ----------
+function render() {
+  const s = S.summary, fix = s.fix || 0, info = s.info || 0, tip = s.tip || 0;
+  document.getElementById("sum").innerHTML = S.count + " parts &middot; " +
+    (fix ? '<span class="pill fix">' + fix + ' to fix</span>' : '<span class="pill ok">nothing to fix</span>') +
+    (info ? '<span class="pill info">' + info + ' missing details</span>' : "") +
+    (tip ? '<span class="pill tip">' + tip + ' tips</span>' : "");
+  document.getElementById("foot").innerHTML = S.ignored
+    ? S.ignored + " hidden on this laptop &middot; <span class='linkish' id='unignore'>show them again</span>" : "";
+  const list = document.getElementById("list");
+  if (!S.problems.length) {
+    list.innerHTML = '<div class="great"><div style="font-size:34px">&#127881;</div><h2>The library looks great!</h2>' +
+      '<div style="color:var(--dim)">No duplicates, broken files, or missing details.</div></div>';
+    return;
+  }
+  list.innerHTML = S.groups.map(g => {
+    const ps = S.problems.filter(p => p.group === g.id);
+    if (!ps.length) return "";
+    const lvl = ps.some(p => p.level === "fix") ? "fix" : ps.some(p => p.level === "info") ? "info" : "tip";
+    const bulk = bulkButton(ps);
+    return '<details data-g="' + g.id + '"' + (S.open[g.id] ? " open" : "") + '><summary><span class="grow">' + esc(g.name) +
+      '</span><span class="pill ' + lvl + '">' + ps.length + '</span>' + bulk + '</summary>' +
+      ps.map(probHtml).join("") + '</details>';
+  }).join("");
+}
+function bulkButton(ps) {
+  const f = ps[0].fix, same = ps.every(p => p.fix === f);
+  if (ps.length > 1 && same && ["rename", "move", "relink", "resave"].includes(f))
+    return '<button data-fixall="' + f + '">Fix all ' + ps.length + '</button>';
+  if (ps.some(p => p.fix === "details")) {
+    const n = ps.filter(p => S.typed[p.file_id] && Object.values(S.typed[p.file_id]).some(v => v !== "")).length;
+    return '<button class="primary" data-saveall="1"' + (n ? "" : " disabled") + '>Save typed (' + n + ')</button>';
+  }
+  return "";
+}
+function field(p, name, cls, ph, value) {
+  const v = (S.typed[p.file_id] || {})[name];
+  return '<input type="text" class="' + cls + '" data-id="' + esc(p.file_id) + '" data-field="' + name + '" placeholder="' + esc(ph) +
+         '" value="' + esc(v != null ? v : (value || "")) + '">';
+}
+function probHtml(p) {
+  const part = S.parts.find(x => x.file_id === p.file_id) || {};
+  let edit = "", acts = "";
+  if (p.fix === "details") {
+    const store = part.url || p.suggest.url;
+    if (p.kind === "no_price" || p.kind === "bad_price" || p.kind === "old_price")
+      edit = '<div class="edit">$' + field(p, "price", "price", "price", p.kind === "no_price" ? "" : part.price) +
+        (store ? '<span class="linkish" data-url="' + esc(store) + '">look it up &#8599;</span>' : "") + '</div>';
+    else if (p.kind === "part_number")
+      edit = '<div class="edit">' + field(p, "vendor_pn", "pn", "WCP-0123", part.pn) + '</div>';
+    else
+      edit = '<div class="edit">' + field(p, "url", "url", "https://...", p.suggest.url || part.url) +
+        (p.suggest.url ? '<span class="linkish" data-url="' + esc(p.suggest.url) + '">open &#8599;</span>' : "") + '</div>';
+    acts = '<button data-save="' + esc(p.file_id) + '">Save</button>';
+  } else if (p.fix) {
+    acts = '<button class="primary" data-fix="' + esc(p.key) + '">' + esc(p.fix_label) + '</button>';
+  }
+  if (p.kind === "duplicate") {               // four buttons: give them their own line under the message
+    edit = '<div class="edit">' + acts + '<button data-notsame="' + esc(p.key) + '" title="Remember these are different parts">Not the same part</button>' +
+      '<button data-open="' + esc(p.file_id) + '">Open this</button><button data-open="' + esc(p.other_id) + '">Open the other</button></div>';
+    acts = "";
+  }
+  return '<div class="prob"><div class="grow"><div class="t">' + esc(p.title) + ' <span style="color:var(--dim);font-weight:400">' +
+    esc(part.pn || "") + '</span></div><div class="m">' + esc(p.message) + '</div>' + edit + '</div><div class="acts">' + acts +
+    '<button class="x" data-ignore="' + esc(p.key) + '" title="Hide this on this laptop">&#10005;</button></div></div>';
+}
+
+// ---------- vendor revision search ----------
+function renderHits() {
+  const q = document.getElementById("rq").value.trim().toLowerCase();
+  const words = q.split(/\s+/).filter(Boolean);
+  const hits = words.length ? S.parts.filter(p => words.every(w => (p.title + " " + p.pn + " " + p.vendor).toLowerCase().includes(w))).slice(0, 8) : [];
+  document.getElementById("hits").innerHTML = hits.map(p => '<div class="hit"><div class="grow"><b>' + esc(p.pn) + '</b> ' + esc(p.title) +
+    ' <span style="color:var(--dim)">' + esc(p.category) + '</span></div><button data-rev="' + esc(p.file_id) + '">Pick new STEP&hellip;</button></div>').join("") +
+    (words.length && !hits.length ? '<div class="hit" style="color:var(--dim)">No part matches.</div>' : "");
+}
+
+// ---------- events ----------
+document.getElementById("recheck").onclick = () => { result(true, ""); send("recheck"); };
+document.getElementById("rq").addEventListener("input", renderHits);
+document.addEventListener("toggle", e => { const g = e.target.getAttribute && e.target.getAttribute("data-g"); if (g) S.open[g] = e.target.open; }, true);
+document.addEventListener("input", e => {
+  const id = e.target.getAttribute("data-id"), f = e.target.getAttribute("data-field");
+  if (!id || !f) return;
+  (S.typed[id] = S.typed[id] || {})[f] = e.target.value;
+  if (f === "price") e.target.classList.toggle("bad", e.target.value !== "" && !priceOk(e.target.value));
+  const det = e.target.closest("details"), btn = det && det.querySelector("[data-saveall]");
+  if (btn) { const n = S.problems.filter(p => p.group === det.getAttribute("data-g") && S.typed[p.file_id] && Object.values(S.typed[p.file_id]).some(v => v !== "")).length;
+             btn.textContent = "Save typed (" + n + ")"; btn.disabled = !n || S.busy; }
+});
+document.addEventListener("click", e => {
+  const t = e.target, a = k => t.getAttribute && t.getAttribute(k);
+  if (t.closest("summary") && t.tagName === "BUTTON") e.preventDefault();      // header buttons don't fold the section
+  const byKey = k => S.problems.find(p => p.key === k);
+  if (a("data-fix")) { const p = byKey(a("data-fix")); result(true, ""); send("fix", { kind: p.kind, fix: p.fix, file_id: p.file_id, values: p.suggest, other_id: p.other_id }); }
+  else if (a("data-notsame")) { const p = byKey(a("data-notsame")); send("fix", { kind: p.kind, fix: "notSame", file_id: p.file_id }); }
+  else if (a("data-save")) { const id = a("data-save"); const vals = S.typed[id] || {};
+    if (!Object.keys(vals).length) { const p = S.problems.find(x => x.file_id === id && x.fix === "details"); if (p && p.suggest.url) vals.url = p.suggest.url; }
+    if (!Object.keys(vals).length) { result(false, "Type something first."); return; }
+    if (vals.price && !priceOk(vals.price)) { result(false, "Type the price as just a number, like 12.99."); return; }
+    result(true, ""); send("fix", { fix: "details", file_id: id, values: vals }); }
+  else if (a("data-saveall")) { const g = t.closest("details").getAttribute("data-g");
+    const items = S.problems.filter(p => p.group === g && S.typed[p.file_id]).map(p => ({ file_id: p.file_id, title: p.title, values: S.typed[p.file_id] }))
+      .filter((x, i, arr) => arr.findIndex(y => y.file_id === x.file_id) === i)
+      .filter(x => Object.values(x.values).some(v => v !== ""));
+    const bad = items.filter(x => x.values.price && !priceOk(x.values.price));
+    if (bad.length) { result(false, "Fix the price for " + bad.map(x => x.title).slice(0, 2).join(", ") + (bad.length > 2 ? " and " + (bad.length - 2) + " more" : "") + " - type just a number, like 12.99."); return; }
+    result(true, ""); send("saveDetails", { items: items }); }
+  else if (a("data-fixall")) { result(true, ""); send("fixAll", { fix: a("data-fixall") }); }
+  else if (a("data-ignore")) send("ignore", { key: a("data-ignore") });
+  else if (a("data-open")) send("openPart", { file_id: a("data-open") });
+  else if (a("data-url")) send("openLink", { url: a("data-url") });
+  else if (a("data-rev")) send("revision", { file_id: a("data-rev") });
+  else if (t.id === "unignore") send("unignore");
+});
+</script>
+</body>
+</html>

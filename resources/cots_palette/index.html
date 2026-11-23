@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gusset COTS Library</title>
+<!--
+  Gusset COTS Library panel. Runs inside Fusion (a "palette").
+  Python -> page : window.fusionJavaScriptHandler.handle(action, json)
+  page -> Python : adsk.fusionSendData(action, json)
+  Everything is logged to the console with a [Gusset COTS] prefix.
+-->
+<style>
+  :root { --bg:#25272b; --panel:#2e3136; --tile:#34383e; --line:#454a52; --text:#e8e9eb; --dim:#9aa0a8;
+          --accent:#f2a33a; --accent-text:#1d1d1d; --good:#4caf6a; --star:#f5c518; }
+  body.light { --bg:#f4f5f7; --panel:#ffffff; --tile:#ffffff; --line:#d7dbe0; --text:#1f2328; --dim:#626a73;
+               --accent:#d9831c; --accent-text:#ffffff; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text);
+               font:13px/1.35 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding:8px; background:var(--panel); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:2; }
+  .row { display:flex; gap:6px; align-items:center; }
+  input[type=search] { flex:1; padding:6px 8px; border-radius:6px; border:1px solid var(--line);
+                       background:var(--bg); color:var(--text); font-size:13px; }
+  button { border:1px solid var(--line); background:var(--tile); color:var(--text); border-radius:6px;
+           padding:5px 8px; cursor:pointer; font-size:12px; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:var(--accent-text); border-color:var(--accent); font-weight:600; }
+  select { padding:5px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--text); }
+  .chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .chip { padding:2px 8px; border-radius:10px; border:1px solid var(--line); cursor:pointer; font-size:11px;
+          color:var(--dim); user-select:none; }
+  .chip.on { background:var(--accent); color:var(--accent-text); border-color:var(--accent); }
+  #status { color:var(--dim); font-size:11px; margin-top:6px; min-height:14px; }
+  #grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px; padding:8px; }
+  .tile { background:var(--tile); border:1px solid var(--line); border-radius:8px; overflow:hidden;
+          cursor:pointer; position:relative; display:flex; flex-direction:column; }
+  .tile:hover { border-color:var(--accent); }
+  .thumb { height:110px; background:#fff; display:flex; align-items:center; justify-content:center; }
+  .thumb img { max-width:100%; max-height:110px; }
+  .thumb .ph { color:#99a; font-size:28px; }
+  .meta { padding:6px 8px 8px; }
+  .title { font-weight:600; font-size:12px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2;
+           -webkit-box-orient:vertical; }
+  .sub { color:var(--dim); font-size:11px; margin-top:2px; display:flex; justify-content:space-between; gap:4px; }
+  .star { position:absolute; top:4px; right:6px; font-size:16px; color:#bbb; text-shadow:0 0 2px #000; }
+  .star.on { color:var(--star); }
+  .link { position:absolute; top:4px; left:6px; font-size:11px; background:rgba(0,0,0,.55); color:#fff;
+          border-radius:4px; padding:0 4px; display:none; }
+  .tile:hover .link { display:block; }
+  .empty { text-align:center; padding:40px 16px; color:var(--dim); }
+  .empty h3 { color:var(--text); }
+  .filters { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; align-items:center; }
+  .filters select { padding:3px 4px; font-size:11px; max-width:130px; }
+  .filters select.on { border-color:var(--accent); color:var(--accent); }
+  .linkbtn { background:none; border:0; color:var(--dim); text-decoration:underline; padding:0 4px; font-size:11px; }
+  .recent { padding:8px 8px 0; }
+  .recent h4 { margin:0 0 6px; font-size:11px; color:var(--dim); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  .strip { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; }
+  .mini { flex:0 0 86px; background:var(--tile); border:1px solid var(--line); border-radius:6px; cursor:pointer; overflow:hidden; }
+  .mini:hover { border-color:var(--accent); }
+  .mini .thumb { height:52px; }
+  .mini .thumb img { max-height:52px; }
+  .mini .thumb .ph { font-size:18px; }
+  .mini div.l { font-size:10px; padding:3px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sizes { display:flex; gap:4px; margin-top:5px; }
+  .sizes select { flex:1; min-width:0; padding:3px; font-size:11px; }
+  .go { width:100%; margin-top:5px; padding:4px; }
+  #health.fix { background:#e5604f; color:#fff; border-color:#e5604f; font-weight:600; }
+  #health.info { color:var(--dim); }
+  .count { position:absolute; top:4px; left:6px; font-size:10px; background:var(--accent); color:var(--accent-text);
+           border-radius:8px; padding:0 6px; font-weight:600; }
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <input type="search" id="q" placeholder="Search name, part #, vendor..." autocomplete="off">
+    <button id="add" class="primary" title="Add a vendor part to the library">+ Add</button>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <select id="cat" style="flex:1"></select>
+    <button id="refresh" title="Re-read the FRC_COTS project">&#8635;</button>
+    <button id="theme" title="Light / dark">&#9681;</button>
+    <button id="health" title="Open the Library Check" style="display:none"></button>
+  </div>
+  <div class="chips" id="vendors"></div>
+  <div class="filters" id="filters"></div>
+  <div id="status"></div>
+</header>
+<div class="recent" id="recent"></div>
+<div id="grid"></div>
+<div id="empty" class="empty" style="display:none"></div>
+
+<script>
+"use strict";
+/*
+  Tiles:
+    - single part           click it to insert
+    - family (2+ sizes)     pick the teeth (and width), then Insert. Families are worked out in
+                            Python (lib/cots_family.py): each item carries family / variant / tags.
+  Python -> page: catalog, thumb, status, usage.  page -> Python: ready, refresh, insert, favorite,
+  theme, add, createProject, openLink.
+*/
+const LOG = (...a) => console.log("[Gusset COTS]", ...a);
+const S = { items: [], byId: {}, favorites: new Set(), categories: [], vendors: [], hasProject: true, project: "FRC_COTS",
+            thumbs: {}, usage: {}, tagLabels: {}, q: "", cat: "", vendor: "", tags: {}, sel: {}, famSize: {} };
+
+// ---------- talking to Fusion ----------
+function send(action, data) {
+  LOG("->", action, data || "");
+  try { return window.adsk.fusionSendData(action, JSON.stringify(data || {})); }
+  catch (e) { LOG("send failed", e); }
+}
+window.fusionJavaScriptHandler = {
+  handle: function (action, data) {
+    try {
+      const d = JSON.parse(data || "{}");
+      if (action === "catalog") onCatalog(d);
+      else if (action === "thumb") onThumb(d);
+      else if (action === "status") status(d.text);
+      else if (action === "usage") { S.usage = d.usage || {}; buildFilters(); render(); }
+      else LOG("unknown action", action);
+    } catch (e) { LOG("handle error", action, e); return "FAILED"; }
+    return "OK";
+  }
+};
+(function waitForFusion(tries) {
+  if (window.adsk && window.adsk.fusionSendData) { send("ready"); return; }
+  if (tries === 40) status("Waiting for Fusion...");
+  setTimeout(() => waitForFusion(tries + 1), 250);
+})(0);
+let gotCatalog = false;
+setInterval(() => { if (!gotCatalog && window.adsk && window.adsk.fusionSendData) send("ready"); }, 4000);
+
+// ---------- data in ----------
+function onCatalog(d) {
+  gotCatalog = true;
+  S.items = d.items || [];
+  S.byId = {}; S.famSize = {};
+  S.items.forEach(i => { S.byId[i.file_id] = i; if (i.family) S.famSize[i.family] = (S.famSize[i.family] || 0) + 1; });
+  S.favorites = new Set(d.favorites || []);
+  S.categories = d.categories || [];
+  S.vendors = d.vendors || [];
+  S.hasProject = d.hasProject;
+  S.project = d.project || "FRC_COTS";
+  S.usage = d.usage || {};
+  S.tagLabels = d.tagLabels || {};
+  showHealth(d.health || {});
+  document.body.classList.toggle("light", d.theme === "light");
+  LOG("catalog", S.items.length, "items");
+  buildFilters();
+  render();
+}
+// Library Check badge: red "3 to fix", or a quiet "101 missing prices"; hidden when all is well.
+function showHealth(h) {
+  const b = document.getElementById("health");
+  b.style.display = h.text ? "" : "none";
+  b.className = h.fix ? "fix" : "info";
+  b.innerHTML = (h.fix ? "&#9888; " : "&#9432; ") + esc(h.text || "");
+}
+function onThumb(d) {
+  S.thumbs[d.file_id] = d.src;
+  document.querySelectorAll('[data-thumb="' + CSS.escape(d.file_id) + '"]').forEach(el => el.innerHTML = '<img src="' + d.src + '" alt="">');
+}
+function status(t) { document.getElementById("status").textContent = t || ""; }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+const isFamily = i => i.family && S.famSize[i.family] >= 2;
+const isFav = i => S.favorites.has(i.file_id) || (i.family && S.favorites.has("fam:" + i.family));
+const recentIds = n => Object.entries(S.usage).sort((a, b) => b[1][1] - a[1][1]).slice(0, n).map(e => e[0]).filter(id => S.byId[id]);
+const mostIds = n => Object.entries(S.usage).sort((a, b) => b[1][0] - a[1][0] || b[1][1] - a[1][1]).slice(0, n).map(e => e[0]).filter(id => S.byId[id]);
+
+// ---------- filters ----------
+function buildFilters() {
+  const counts = {};
+  S.items.forEach(i => counts[i.category] = (counts[i.category] || 0) + 1);
+  const cats = [...new Set([...S.categories, ...Object.keys(counts)])];
+  const nFav = S.items.filter(isFav).length, nRecent = recentIds(12).length;
+  const sel = document.getElementById("cat");
+  sel.innerHTML = '<option value="">All categories (' + S.items.length + ')</option>' +
+    '<option value="*fav">&#9733; Favorites (' + nFav + ')</option>' +
+    '<option value="*recent">&#9201; Recently used (' + nRecent + ')</option>' +
+    '<option value="*most">&#9650; Most used (' + mostIds(12).length + ')</option>' +
+    cats.map(c => '<option value="' + esc(c) + '">' + esc(c) + ' (' + (counts[c] || 0) + ')</option>').join("");
+  sel.value = S.cat;
+  const vendors = [...new Set([...S.vendors, ...S.items.map(i => i.vendor).filter(Boolean)])];
+  document.getElementById("vendors").innerHTML = vendors.map(v =>
+    '<span class="chip' + (S.vendor === v ? " on" : "") + '" data-vendor="' + esc(v) + '">' + esc(v) + '</span>').join("");
+  buildTagFilters();
+}
+// One menu per tag that has 2+ values among the parts in view (e.g. Bore only shows up for gears and pulleys).
+function buildTagFilters() {
+  const pool = S.items.filter(i => baseMatch(i, true));
+  const html = Object.keys(S.tagLabels).map(t => {
+    const values = [...new Set(pool.map(i => (i.tags || {})[t]).filter(Boolean))].sort();
+    if (values.length < 2 && !S.tags[t]) return "";
+    const cur = S.tags[t] || "";
+    return '<select data-tag="' + t + '" class="' + (cur ? "on" : "") + '"><option value="">' + esc(S.tagLabels[t]) + ': any</option>' +
+      values.map(v => '<option value="' + esc(v) + '"' + (v === cur ? " selected" : "") + '>' + esc(S.tagLabels[t]) + ': ' + esc(v) + '</option>').join("") + '</select>';
+  }).join("");
+  const any = Object.values(S.tags).some(Boolean);
+  document.getElementById("filters").innerHTML = html + (any ? '<button class="linkbtn" id="clearTags">clear filters</button>' : "");
+}
+
+// Category / vendor / tags (skipTags: used to work out which tag menus to offer).
+function baseMatch(i, skipTags) {
+  if (S.cat === "*fav" && !isFav(i)) return false;
+  if ((S.cat === "*recent" || S.cat === "*most") && !S.usage[i.file_id]) return false;
+  if (S.cat && S.cat[0] !== "*" && i.category !== S.cat) return false;
+  if (S.vendor && i.vendor !== S.vendor) return false;
+  if (!skipTags) for (const [t, v] of Object.entries(S.tags)) if (v && (i.tags || {})[t] !== v) return false;
+  return true;
+}
+// Same rules as cots_core.search: every word must appear; part # and name matches first.
+function score(i) {
+  const words = S.q.toLowerCase().split(/[^a-z0-9.#\/"-]+/).filter(Boolean);
+  const q = S.q.trim().toLowerCase();
+  const name = (i.title || "").toLowerCase(), pn = (i.info.vendor_pn || "").toLowerCase();
+  const tags = Object.values(i.tags || {}).join(" ");
+  const hay = [name, pn, i.vendor, i.category, i.info.notes, i.file_name, tags, i.variant_label].join(" ").toLowerCase();
+  if (words.some(w => !hay.includes(w))) return -1;
+  let sc = 0;
+  if (q && q === pn) sc += 100;
+  if (q && name.startsWith(q)) sc += 20;
+  words.forEach(w => { if (name.includes(w)) sc += 3; });
+  if (isFav(i)) sc += 5;
+  return sc;
+}
+
+// The tiles to draw: singles, and families holding only the sizes that match.
+function tiles() {
+  const special = S.cat === "*recent" || S.cat === "*most";
+  const hits = S.items.filter(i => baseMatch(i)).map(i => ({ i, sc: score(i) })).filter(x => x.sc >= 0);
+  if (special) {
+    const order = S.cat === "*recent" ? recentIds(50) : mostIds(50);
+    return hits.sort((a, b) => order.indexOf(a.i.file_id) - order.indexOf(b.i.file_id)).map(x => ({ single: x.i }));
+  }
+  const fams = {}, out = [];
+  hits.forEach(x => {
+    if (isFamily(x.i)) {
+      const f = fams[x.i.family] || (fams[x.i.family] = { family: x.i.family, members: [], sc: -1, best: null });
+      f.members.push(x.i);
+      if (x.sc > f.sc) { f.sc = x.sc; f.best = x.i.file_id; }
+    } else out.push({ single: x.i, sc: x.sc, title: x.i.title });
+  });
+  Object.values(fams).forEach(f => {
+    f.members.sort((a, b) => (a.variant.teeth || 0) - (b.variant.teeth || 0) || (a.variant.width_mm || 0) - (b.variant.width_mm || 0));
+    out.push({ fam: f, sc: f.sc, title: f.members[0].family_name });
+  });
+  return out.sort((a, b) => b.sc - a.sc || a.title.localeCompare(b.title));
+}
+
+// Which size a family tile shows: the one picked, else the best search hit, else the most used, else the smallest.
+function chosen(f) {
+  const ids = f.members.map(m => m.file_id);
+  if (S.sel[f.family] && ids.includes(S.sel[f.family])) return S.byId[S.sel[f.family]];
+  if (S.q.trim() && f.best) return S.byId[f.best];
+  const used = f.members.filter(m => S.usage[m.file_id]).sort((a, b) => S.usage[b.file_id][0] - S.usage[a.file_id][0]);
+  return used[0] || f.members[0];
+}
+
+// ---------- drawing ----------
+function thumbHtml(id) {
+  return '<div class="thumb" data-thumb="' + esc(id) + '">' +
+    (S.thumbs[id] ? '<img src="' + S.thumbs[id] + '" alt="">' : '<span class="ph">&#9881;</span>') + '</div>';
+}
+function singleHtml(i) {
+  const fav = isFav(i), price = i.info.price ? "$" + esc(i.info.price) : "";
+  return '<div class="tile" data-id="' + esc(i.file_id) + '" title="Click to insert: ' + esc(i.file_name) + '">' + thumbHtml(i.file_id) +
+    '<span class="star' + (fav ? " on" : "") + '" data-star="' + esc(i.file_id) + '">' + (fav ? "&#9733;" : "&#9734;") + '</span>' +
+    (i.info.url ? '<span class="link" data-url="' + esc(i.info.url) + '">store &#8599;</span>' : "") +
+    '<div class="meta"><div class="title">' + esc(i.title) + '</div>' +
+    '<div class="sub"><span>' + esc(i.info.vendor_pn || i.vendor) + '</span><span>' + price + '</span></div></div></div>';
+}
+function familyHtml(f) {
+  const cur = chosen(f), key = f.family, favKey = "fam:" + key, fav = S.favorites.has(favKey);
+  const teeth = [...new Set(f.members.map(m => m.variant.teeth))].sort((a, b) => a - b);
+  const widthsAll = [...new Set(f.members.map(m => m.variant.width_mm).filter(Boolean))].sort((a, b) => a - b);
+  const widthsHere = f.members.filter(m => m.variant.teeth === cur.variant.teeth).map(m => m.variant.width_mm).filter(Boolean);
+  const total = S.famSize[key], shown = f.members.length;
+  const range = teeth.length > 1 ? teeth[0] + "-" + teeth[teeth.length - 1] + "t" : teeth[0] + "t";
+  const price = cur.info.price ? "$" + esc(cur.info.price) : "";
+  return '<div class="tile fam" data-fam="' + esc(key) + '">' + thumbHtml(cur.file_id) +
+    '<span class="count">' + (shown < total ? shown + " of " + total : total) + ' sizes</span>' +
+    '<span class="star' + (fav ? " on" : "") + '" data-star="' + esc(favKey) + '">' + (fav ? "&#9733;" : "&#9734;") + '</span>' +
+    '<div class="meta"><div class="title">' + esc(cur.family_name) + '</div>' +
+    '<div class="sub"><span>' + esc(cur.vendor) + ' \u00b7 ' + esc(range) + '</span><span>' + price + '</span></div>' +
+    '<div class="sizes"><select data-teeth="' + esc(key) + '" title="Teeth">' +
+      teeth.map(t => '<option value="' + t + '"' + (t === cur.variant.teeth ? " selected" : "") + '>' + t + 't</option>').join("") + '</select>' +
+      (widthsAll.length > 1 ? '<select data-width="' + esc(key) + '" title="Width">' + widthsAll.map(w =>
+        '<option value="' + w + '"' + (w === cur.variant.width_mm ? " selected" : "") + (widthsHere.includes(w) ? "" : " disabled") + '>' + w + 'mm</option>').join("") + '</select>' : "") +
+    '</div><div class="sub"><span>' + esc(cur.info.vendor_pn) + '</span></div>' +
+    '<button class="primary go" data-go="' + esc(cur.file_id) + '">Insert ' + esc(cur.variant_label) + '</button></div></div>';
+}
+function renderRecent() {
+  const box = document.getElementById("recent");
+  const show = !S.q.trim() && !S.cat && !S.vendor && !Object.values(S.tags).some(Boolean);
+  const ids = show ? recentIds(8) : [];
+  box.innerHTML = ids.length ? '<h4>Recently used</h4><div class="strip">' + ids.map(id => {
+    const i = S.byId[id];
+    return '<div class="mini" data-id="' + esc(id) + '" title="Insert ' + esc(i.title) + '">' + thumbHtml(id) +
+           '<div class="l">' + esc(i.variant_label ? i.variant_label + " " + i.family_name : i.title) + '</div></div>';
+  }).join("") + '</div>' : "";
+}
+function render() {
+  const grid = document.getElementById("grid"), empty = document.getElementById("empty");
+  renderRecent();
+  if (!S.hasProject) {
+    grid.innerHTML = ""; empty.style.display = "block";
+    empty.innerHTML = "<h3>No " + esc(S.project) + " project yet</h3><p>Gusset can make it for you, with a folder " +
+      "for every category.</p><button class='primary' id='mk'>Create " + esc(S.project) + "</button>";
+    document.getElementById("mk").onclick = () => send("createProject");
+    return;
+  }
+  const list = tiles();
+  if (!list.length) {
+    grid.innerHTML = ""; empty.style.display = "block";
+    empty.innerHTML = S.cat === "*recent" || S.cat === "*most"
+      ? "<h3>Nothing used yet</h3><p>Parts you insert show up here.</p>"
+      : S.items.length ? "<h3>Nothing matches</h3><p>Try fewer words, clear the filters, or add the part yourself!</p>"
+      : "<h3>The library is empty</h3><p>Download a STEP file from a vendor and press <b>+ Add</b>.</p>";
+    return;
+  }
+  empty.style.display = "none";
+  grid.innerHTML = list.map(t => t.fam ? familyHtml(t.fam) : singleHtml(t.single)).join("");
+}
+
+// ---------- clicks ----------
+document.getElementById("q").addEventListener("input", e => { S.q = e.target.value; render(); });
+document.getElementById("cat").addEventListener("change", e => { S.cat = e.target.value; buildTagFilters(); render(); });
+document.getElementById("refresh").onclick = () => send("refresh");
+document.getElementById("add").onclick = () => send("add");
+document.getElementById("health").onclick = () => send("check");
+document.getElementById("theme").onclick = () => {
+  const light = !document.body.classList.contains("light");
+  document.body.classList.toggle("light", light);
+  send("theme", { theme: light ? "light" : "dark" });
+};
+document.getElementById("vendors").addEventListener("click", e => {
+  const v = e.target.getAttribute("data-vendor");
+  if (v === null) return;
+  S.vendor = S.vendor === v ? "" : v;
+  buildFilters(); render();
+});
+document.getElementById("filters").addEventListener("change", e => {
+  const t = e.target.getAttribute("data-tag");
+  if (!t) return;
+  S.tags[t] = e.target.value;
+  buildTagFilters(); render();
+});
+document.getElementById("filters").addEventListener("click", e => {
+  if (e.target.id === "clearTags") { S.tags = {}; buildTagFilters(); render(); }
+});
+// Size pickers: teeth first; if that size doesn't come in the current width, take a width it does.
+document.getElementById("grid").addEventListener("change", e => {
+  const tk = e.target.getAttribute("data-teeth"), wk = e.target.getAttribute("data-width");
+  const key = tk || wk;
+  if (!key) return;
+  const tile = e.target.closest(".tile");
+  const teeth = Number(tile.querySelector("[data-teeth]").value);
+  const wSel = tile.querySelector("[data-width]");
+  const width = wSel ? Number(wSel.value) : null;
+  const members = S.items.filter(i => i.family === key);
+  const pick = members.find(m => m.variant.teeth === teeth && (width === null || m.variant.width_mm === width)) ||
+               members.find(m => m.variant.teeth === teeth);
+  if (pick) { S.sel[key] = pick.file_id; render(); }
+});
+function onClick(e) {
+  if (e.target.closest("select")) return;                  // picking a size isn't a click to insert
+  const star = e.target.getAttribute("data-star"), url = e.target.getAttribute("data-url"), go = e.target.getAttribute("data-go");
+  if (star) {
+    const on = !S.favorites.has(star);
+    on ? S.favorites.add(star) : S.favorites.delete(star);
+    send("favorite", { file_id: star, on: on });
+    buildFilters(); render();
+    return;
+  }
+  if (url) { send("openLink", { url: url }); return; }
+  if (go) { send("insert", { file_id: go }); return; }
+  const fam = e.target.closest(".tile.fam");
+  if (fam) {                                                // clicking a family's picture inserts the size shown
+    if (e.target.closest(".thumb")) send("insert", { file_id: fam.querySelector("[data-go]").getAttribute("data-go") });
+    return;
+  }
+  const tile = e.target.closest("[data-id]");
+  if (tile) send("insert", { file_id: tile.getAttribute("data-id") });
+}
+document.getElementById("grid").addEventListener("click", onClick);
+document.getElementById("recent").addEventListener("click", onClick);
+</script>
+</body>
+</html>

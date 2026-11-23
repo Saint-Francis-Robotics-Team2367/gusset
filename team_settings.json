@@ -1,0 +1,99 @@
+{
+  "bearing_fits": {
+    "3D print": 0.008,
+    "Press": -0.0005,
+    "Slip": 0.002,
+    "Snug": 0.0
+  },
+  "bearings": [
+    {
+      "bore_in": 0.5,
+      "flange_od_in": 1.225,
+      "flange_thk_in": 0.062,
+      "name": "FR8ZZ flanged, 1/2\" round bore",
+      "od_in": 1.125,
+      "width_in": 0.3125
+    },
+    {
+      "bore_in": 0.5,
+      "flange_od_in": 1.225,
+      "flange_thk_in": 0.062,
+      "name": "FR8ZZ-size flanged, 1/2\" hex bore (am-2986)",
+      "od_in": 1.125,
+      "width_in": 0.3125
+    },
+    {
+      "bore_in": 0.5,
+      "flange_od_in": 0.0,
+      "flange_thk_in": 0.0,
+      "name": "R8ZZ (no flange), 1/2\" round bore",
+      "od_in": 1.125,
+      "width_in": 0.3125
+    },
+    {
+      "bore_in": 0.375,
+      "flange_od_in": 0.969,
+      "flange_thk_in": 0.062,
+      "name": "FR6ZZ flanged, 3/8\" round bore",
+      "od_in": 0.875,
+      "width_in": 0.281
+    },
+    {
+      "bore_in": 0.375,
+      "flange_od_in": 0.0,
+      "flange_thk_in": 0.0,
+      "name": "R6ZZ (no flange), 3/8\" round bore",
+      "od_in": 0.875,
+      "width_in": 0.281
+    }
+  ],
+  "cots_patterns": [
+    "^WCP-",
+    "^am-\\d",
+    "^REV-\\d",
+    "^217-\\d",
+    "^TTB",
+    "^\\d{4,5}[A-Z]\\d{1,4}\\b",
+    "(?i)\\b(bearing|bolt|screw|nut|washer|rivet|shaft collar)s?\\b",
+    "(?i)\\b(kraken|falcon|neo|vortex|cim|minion)\\b"
+  ],
+  "default_name_patterns": [
+    "^Component\\s*\\d*$",
+    "^Body\\s*\\d*$",
+    "^Part\\s*\\d*$",
+    "^Assembly\\s*\\d*$",
+    "^Untitled.*$",
+    "^New Component.*$"
+  ],
+  "fab_units": "in",
+  "laser_format": "svg",
+  "name_format": "{pn} {desc}",
+  "processes": [
+    "X-Carve",
+    "Laser",
+    "3D Print",
+    "Lathe",
+    "Mill",
+    "Hand Tools",
+    "Outsourced",
+    "TBD"
+  ],
+  "scan_project": true,
+  "season_year": "auto",
+  "shared_subsystem": "MSC",
+  "subsystems": {
+    "ARM": "Arm",
+    "BMP": "Bumpers",
+    "CLB": "Climber",
+    "DRV": "Drivetrain",
+    "ELC": "Electrical",
+    "ELV": "Elevator",
+    "FRM": "Frame",
+    "GRB": "Gearbox",
+    "IDX": "Indexer",
+    "INT": "Intake",
+    "MSC": "Misc",
+    "SHT": "Shooter"
+  },
+  "xcarve_format": "svg"
+}
