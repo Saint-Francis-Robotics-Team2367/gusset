@@ -24,12 +24,8 @@ Everything a mentor does that students don't: create the repo once, publish rele
    ```
    This also builds `dist/Gusset-0.13.2.zip`, with the right download link inside.
 4. **Publish the first release** (see *Publishing a release* below, steps 3-4).
-5. **Protect `main`:** on GitHub, open **Settings > Branches > Add branch ruleset** (or *branch protection rule*) for `main`, and tick:
-   - **Require a pull request before merging**, with **1 approval**
-   - **Require status checks to pass**, adding **Tests (ubuntu-latest)**, **Tests (windows-latest)** and **Tests (macos-latest)** (they show up in the list after the tests have run once)
-   - **Block force pushes**
-6. **Give students access:** **Settings > Collaborators and teams**, with the **Write** role. Write lets them push branches; branch protection still stops them pushing to `main`.
-7. **Paste the student guide link** into `README.md` (search for `MENTOR:`).
+5. **Protect `main`:** the **Protect main** ruleset (Settings > Rules > Rulesets) requires a pull request with a Code Owner's approval (`.github/CODEOWNERS`), the three **Tests** checks, resolved conversations, and blocks deletions and force pushes. Repository admins can merge their own pull requests (bypass: pull requests only). To rebuild it, import `docs/Protect main ruleset.json` from **New ruleset > Import a ruleset**.
+6. **Students report problems with Issues:** the repo is public, so anyone with a free GitHub account can open an Issue - no collaborator access needed. Students who later change code can fork the repo and open a pull request from their fork (or be added as collaborators with **Write**).
 
 Then install on every laptop once, from the release zip. After that, updates come by themselves.
 

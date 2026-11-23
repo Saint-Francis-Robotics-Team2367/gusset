@@ -2,7 +2,9 @@
 
 Thanks for helping! Gusset is built by students, for students. Fixing a typo in a tip helps just as much as a new tool.
 
-**The one rule:** never push straight to `main`. Every laptop on the team updates from `main`, so all changes go through a **pull request** that a mentor reviews.
+**Just want to report a bug or idea?** Open an **[Issue](../../issues/new/choose)** - that's all you need.
+
+**The one rule for code:** never push straight to `main`. Every laptop on the team updates from `main`, so all changes go through a **pull request** that a mentor reviews.
 
 ---
 
@@ -43,7 +45,7 @@ You need **Fusion**, **Python 3.12+** (only to run the tests) and **Git** (or Gi
 
 ## 3. Open a pull request
 
-Push your branch (`git push -u origin fix-spacer-bore`), then open a pull request on GitHub. The template asks:
+Push your branch (`git push -u origin fix-spacer-bore`), then open a pull request on GitHub. Not a collaborator? Click **Fork** on the repo page first, clone *your fork*, push your branch there, and GitHub will offer to open the pull request back to the team repo. The template asks:
 - What changed and why, plus a screenshot if it's something you can see.
 - How you tested it in Fusion (Mac, Windows or both).
 
