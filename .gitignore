@@ -1,0 +1,17 @@
+# --- Never commit these: they're one laptop's own files (and can hold that student's paths) ---
+gusset_config.json          # this computer's settings
+gusset_state.json           # this computer's state (recently used parts, window sizes...)
+team_settings_draft.json    # a mentor's unpublished team-settings edits
+logs/                       # log files and naming reports
+cache/                      # COTS catalog + thumbnails, rebuilt automatically
+dist/                       # release zips - attach them to a GitHub Release instead
+
+# --- Python / editors / OS ---
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
