@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gusset Settings</title>
+<!--
+  Gusset's Settings window (a Fusion palette). Python side: commands/open_settings.py.
+  Python -> page : fusionJavaScriptHandler.handle(action, json)
+  page -> Python : adsk.fusionSendData(action, json)
+  Console lines start with [Gusset settings].
+-->
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1f2328; --dim:#5f6873; --line:#d9dde3; --accent:#d9831c;
+          --accent-text:#fff; --good:#2f8f4e; --warn:#b45309; --field:#fff; --soft:#f0f2f5; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#25272b; --card:#2e3136; --text:#e8e9eb; --dim:#a3a9b1; --line:#454a52; --accent:#f2a33a;
+            --accent-text:#1d1d1d; --good:#6fcf8f; --warn:#f0b35d; --field:#25272b; --soft:#34383e; }
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--text); font:13px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding:14px 16px 10px; background:var(--card); border-bottom:1px solid var(--line); }
+  .brand { display:flex; align-items:baseline; gap:10px; }
+  .brand h1 { font-size:18px; margin:0; }
+  .badge { background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:1px 9px; font-size:12px; }
+  .update { display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 10px; border-radius:8px; background:var(--soft); }
+  .update .msg { flex:1; }
+  .dot { width:9px; height:9px; border-radius:50%; background:var(--dim); flex:0 0 9px; }
+  .dot.good { background:var(--good); } .dot.new { background:var(--accent); }
+  nav { display:flex; gap:2px; padding:0 12px; background:var(--card); border-bottom:1px solid var(--line); }
+  nav button { border:0; background:none; padding:9px 12px; color:var(--dim); border-bottom:2px solid transparent; border-radius:0; }
+  nav button.on { color:var(--text); border-bottom-color:var(--accent); font-weight:600; }
+  main { padding:12px 16px 80px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  section h2 { font-size:13px; margin:0 0 8px; }
+  .row { display:grid; grid-template-columns:170px 1fr; gap:10px; align-items:start; padding:6px 0; border-top:1px solid var(--soft); }
+  .row:first-of-type { border-top:0; }
+  .row label { color:var(--dim); padding-top:5px; }
+  .help { color:var(--dim); font-size:11px; margin-top:2px; }
+  input[type=text], input[type=number], select, textarea { width:100%; padding:5px 7px; border:1px solid var(--line);
+      border-radius:5px; background:var(--field); color:var(--text); font:inherit; }
+  textarea { min-height:70px; font:12px/1.4 Menlo, Consolas, monospace; }
+  input:disabled, select:disabled, textarea:disabled { opacity:0.75; }
+  .pairs .pair { display:grid; grid-template-columns:90px 1fr 26px; gap:6px; margin-bottom:4px; }
+  .pairs .pair button { padding:0; }
+  button { border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:6px; padding:6px 11px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-text); font-weight:600; }
+  button:disabled { opacity:0.5; cursor:default; }
+  .switch { display:flex; gap:10px; align-items:flex-start; padding:6px 0; }
+  .switch input { margin-top:3px; }
+  .banner { border-radius:8px; padding:10px 12px; margin-bottom:12px; border:1px solid var(--line); background:var(--soft); }
+  .banner.warn { border-color:var(--warn); }
+  .banner .actions { margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; }
+  .problems { color:var(--warn); margin:6px 0 0 16px; padding:0; }
+  .bar { position:fixed; left:0; right:0; bottom:0; padding:10px 16px; background:var(--card); border-top:1px solid var(--line);
+         display:flex; gap:8px; align-items:center; }
+  .bar .note { flex:1; color:var(--dim); }
+  .mono { font:11px/1.4 Menlo, Consolas, monospace; word-break:break-all; }
+  .hidden { display:none !important; }
+  .lock { color:var(--dim); font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1>Gusset</h1><span class="badge" id="ver">version ...</span></div>
+  <div class="update"><span class="dot" id="dot"></span><span class="msg" id="umsg">Checking...</span>
+    <button id="check">Check for updates</button><button class="primary hidden" id="install">Update now</button></div>
+</header>
+<nav><button data-tab="computer" class="on">This computer</button><button data-tab="team">Team</button><button data-tab="advanced">Advanced</button></nav>
+<main>
+  <div id="tab-computer">
+    <section><h2>This computer</h2>
+      <div class="switch"><input type="checkbox" id="check_updates"><div><b>Check for updates when Fusion starts</b>
+        <div class="help">Gusset looks for a new version at most every 6 hours and asks before installing.</div></div></div>
+      <div class="switch"><input type="checkbox" id="debug_logs"><div><b>Detailed logs</b>
+        <div class="help">More detail in the log file - helps a mentor find problems. Takes effect next time Fusion starts.</div></div></div>
+    </section>
+    <section><h2>Files</h2>
+      <div class="row"><label>Installed in</label><div class="mono" id="installdir"></div></div>
+      <div class="row"><label>Log file</label><div><div class="mono" id="logfile"></div>
+        <button id="openlog" style="margin-top:6px">Open log folder</button></div></div>
+      <div class="row hidden" id="undorow"><label>Last update</label><div>
+        <button id="undo">Undo last update</button><div class="help" id="undohelp"></div></div></div>
+    </section>
+  </div>
+
+  <div id="tab-team" class="hidden">
+    <div class="banner" id="teambanner"></div>
+    <div id="teamforms"></div>
+  </div>
+
+  <div id="tab-advanced" class="hidden">
+    <div class="banner">Less-common team settings, written as JSON. Only change these if you know the format - Gusset checks them before saving.</div>
+    <div id="advforms"></div>
+  </div>
+</main>
+<div class="bar hidden" id="editbar"><span class="note" id="editnote">Editing team settings on this computer.</span>
+  <button id="cancel">Cancel</button><button class="primary" id="save">Save on this computer</button></div>
+
+<script>
+"use strict";
+const LOG = (...a) => console.log("[Gusset settings]", ...a);
+let S = null, editing = false;
+
+// Field layout of the Team tab. key, label, type, help, [choices]
+const TEAM = [
+  ["Season and part numbers", [
+    ["season_year", "Season year", "text", "'auto' (next season from September on) or two digits, like 27."],
+    ["subsystems", "Subsystem codes", "pairs", "Code (2-4 capital letters) and name, e.g. ELV Elevator."],
+    ["shared_subsystem", "Shared parts code", "text", "Code for team parts used in more than one subsystem (blank = off)."],
+    ["name_format", "Name format", "text", "{pn} = part number, {desc} = description."],
+    ["scan_project", "Check numbers across files", "bool", "So numbers never repeat between files."],
+    ["number_scan_scope", "Check numbers in", "choice", "Where Name Parts looks for numbers already used.", ["season folder", "project"]],
+  ]],
+  ["Build and export", [
+    ["processes", "Processes", "lines", "One per line - Export BOM's Process choices. TBD is always added."],
+    ["fab_units", "Units for cut files", "choice", "", ["in", "mm"]],
+    ["xcarve_format", "X-Carve file type", "choice", "SVG keeps real units for Easel.", ["svg", "dxf"]],
+    ["laser_format", "Laser file type", "choice", "", ["svg", "dxf"]],
+  ]],
+  ["Robot weight", [
+    ["weight_limits", "Weight limits", "pairs", "robot_lb (no bumpers/battery), robot_with_bumpers_lb, warn_at_percent. Check the game manual every Kickoff!"],
+    ["weight_exclude", "Not weighed with the robot", "lines", "One word per line. Parts with these words in their name or assembly don't count (bumpers, battery)."],
+    ["weight_default_materials", "Fusion's default material", "lines", "Made parts still on this material get a 'set the material' warning."],
+  ]],
+  ["Bearings and lightening", [
+    ["bearing_fits", "Bearing fits (in)", "pairs", "Inches added to the bearing's outside diameter (negative = tighter)."],
+    ["lighten_defaults", "Lighten defaults (in)", "pairs", "wall_in, rib_in, boss_in, min_pocket_in, max_span_in."],
+  ]],
+];
+const ADVANCED = [
+  ["bearings", "Bearing sizes"], ["lighten_cutters", "Lighten cutters"], ["review_checklist", "Design Review checklist"],
+  ["cots", "COTS library (project, categories, vendors)"], ["cots_patterns", "COTS name patterns"],
+  ["default_name_patterns", "Default-name patterns"],
+];
+
+function send(action, data) {
+  LOG("->", action);
+  try { window.adsk.fusionSendData(action, JSON.stringify(data || {})); } catch (e) { LOG("send failed", e); }
+}
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function $(id) { return document.getElementById(id); }
+function ago(t) {
+  if (!t) return "never";
+  const m = Math.round((Date.now() / 1000 - t) / 60);
+  return m < 1 ? "just now" : m < 60 ? m + " min ago" : m < 1440 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " days ago";
+}
+
+// ---------- header ----------
+function drawHeader() {
+  $("ver").textContent = "version " + S.version;
+  const u = S.update, dot = $("dot"), msg = $("umsg");
+  $("install").classList.add("hidden");
+  if (!u.repo_set) { dot.className = "dot"; msg.textContent = "Automatic updates aren't set up yet (a mentor sets the GitHub repo)."; $("check").disabled = true; return; }
+  $("check").disabled = false;
+  if (u.newer) {
+    dot.className = "dot new"; msg.textContent = "Gusset " + u.latest.version + " is available.";
+    $("install").classList.remove("hidden");
+  } else {
+    dot.className = "dot good"; msg.textContent = "You're up to date · checked " + ago(u.last_check);
+  }
+}
+
+// ---------- This computer ----------
+function drawComputer() {
+  $("check_updates").checked = S.personal.check_updates !== false;
+  $("debug_logs").checked = S.personal.debug_logs !== false;
+  $("installdir").textContent = S.install_dir;
+  $("logfile").textContent = S.log_file;
+  $("undorow").classList.toggle("hidden", !S.update.backup);
+  $("undohelp").textContent = S.update.backup ? "Puts version " + S.update.backup + " back." : "";
+}
+
+// ---------- Team ----------
+function fieldHtml(f) {
+  const [key, label, type, help, choices] = f, v = S.team[key], dis = editing ? "" : " disabled";
+  let input = "";
+  if (type === "text") input = '<input type="text" data-key="' + key + '" value="' + esc(v == null ? "" : v) + '"' + dis + '>';
+  else if (type === "bool") input = '<input type="checkbox" data-key="' + key + '"' + (v ? " checked" : "") + dis + '>';
+  else if (type === "choice") input = '<select data-key="' + key + '"' + dis + '>' + choices.map(c => '<option' + (String(v).toLowerCase() === c ? " selected" : "") + '>' + c + '</option>').join("") + '</select>';
+  else if (type === "lines") input = '<textarea data-key="' + key + '" data-type="lines"' + dis + '>' + esc((v || []).join("\n")) + '</textarea>';
+  else if (type === "pairs") {
+    const rows = Object.entries(v || {}).map(([a, b]) => pairRow(a, b, dis)).join("");
+    input = '<div class="pairs" data-key="' + key + '" data-type="pairs">' + rows + '</div>' +
+            (editing ? '<button data-add="' + key + '">+ Add</button>' : "");
+  }
+  return '<div class="row"><label>' + esc(label) + '</label><div>' + input + (help ? '<div class="help">' + esc(help) + '</div>' : "") + '</div></div>';
+}
+function pairRow(a, b, dis) {
+  return '<div class="pair"><input type="text" class="pa" value="' + esc(a) + '"' + dis + '><input type="text" class="pb" value="' + esc(b) + '"' + dis + '>' +
+         (dis ? '<span></span>' : '<button class="rm" title="Remove">×</button>') + '</div>';
+}
+function drawTeam() {
+  const b = $("teambanner");
+  const where = S.team_source === "github" ? "from GitHub" : S.team_source === "draft" ? "with unpublished changes on this computer" : "from this computer only (not published yet)";
+  if (S.has_draft) {
+    b.className = "banner warn";
+    b.innerHTML = "<b>This computer has team settings that aren't published yet.</b> Only this computer uses them." +
+      '<div class="actions"><button class="primary" id="publish">Publish to GitHub</button><button id="discard">Discard changes</button></div>' +
+      '<div class="help" id="pubhelp"></div>';
+  } else {
+    b.className = "banner";
+    b.innerHTML = "<span class='lock'>&#128274;</span> Team settings come " + esc(where) + " and are the same on every laptop." +
+      (editing ? "" : '<div class="actions"><button id="edit">Edit team settings (mentors)</button></div>');
+  }
+  $("teamforms").innerHTML = TEAM.map(([title, fields]) => "<section><h2>" + esc(title) + "</h2>" + fields.map(fieldHtml).join("") + "</section>").join("");
+  $("advforms").innerHTML = ADVANCED.map(([key, label]) =>
+    '<section><h2>' + esc(label) + '</h2><textarea data-key="' + key + '" data-type="json"' + (editing ? "" : " disabled") + '>' +
+    esc(S.team[key] === undefined ? "" : JSON.stringify(S.team[key], null, 2)) + '</textarea></section>').join("");
+  $("editbar").classList.toggle("hidden", !editing);
+  wireTeam();
+}
+function wireTeam() {
+  const e = $("edit"); if (e) e.onclick = () => { editing = true; drawTeam(); $("editnote").textContent = "Editing team settings on this computer."; };
+  const d = $("discard"); if (d) d.onclick = () => send("discardDraft");
+  const p = $("publish"); if (p) p.onclick = publish;
+  document.querySelectorAll("[data-add]").forEach(btn => btn.onclick = () => {
+    btn.previousElementSibling.insertAdjacentHTML("beforeend", pairRow("", "", "")); wireRemove();
+  });
+  wireRemove();
+}
+function wireRemove() { document.querySelectorAll(".pair .rm").forEach(b => b.onclick = () => b.parentElement.remove()); }
+
+function collect() {
+  const out = Object.assign({}, S.team), problems = [];
+  document.querySelectorAll("[data-key]").forEach(el => {
+    const key = el.getAttribute("data-key"), type = el.getAttribute("data-type");
+    if (el.tagName === "BUTTON") return;
+    if (type === "pairs") {
+      const obj = {};
+      el.querySelectorAll(".pair").forEach(r => {
+        const a = r.querySelector(".pa").value.trim(), b = r.querySelector(".pb").value.trim();
+        if (!a) return;
+        const n = Number(b);
+        obj[a] = (key === "subsystems" || b === "" || isNaN(n)) ? b : n;
+      });
+      out[key] = obj;
+    } else if (type === "lines") out[key] = el.value.split("\n").map(s => s.trim()).filter(Boolean);
+    else if (type === "json") {
+      if (!el.value.trim()) { delete out[key]; return; }
+      try { out[key] = JSON.parse(el.value); } catch (err) { problems.push(key + ": not valid JSON (" + err.message + ")"); }
+    }
+    else if (el.type === "checkbox") out[key] = el.checked;
+    else out[key] = el.value.trim();
+  });
+  return { team: out, problems };
+}
+function publish() {
+  const text = JSON.stringify(S.team, null, 2);
+  const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand("copy"); } catch (e) {}
+  ta.remove();
+  $("pubhelp").textContent = (ok ? "Copied the team settings. " : "Couldn't copy automatically - use Advanced to copy them. ") +
+    "GitHub opens next: select everything in the file, paste, then press Commit changes. Every laptop gets them at its next check.";
+  send("publish");
+}
+
+// ---------- tabs / buttons ----------
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+  ["computer", "team", "advanced"].forEach(t => $("tab-" + t).classList.toggle("hidden", t !== b.getAttribute("data-tab")));
+});
+$("check").onclick = () => { $("umsg").textContent = "Checking GitHub..."; $("check").disabled = true; send("checkUpdates"); };
+$("install").onclick = () => send("installUpdate");
+$("openlog").onclick = () => send("openLog");
+$("undo").onclick = () => send("undoUpdate");
+["check_updates", "debug_logs"].forEach(id => $(id).onchange = () =>
+  send("savePersonal", { check_updates: $("check_updates").checked, debug_logs: $("debug_logs").checked }));
+$("cancel").onclick = () => { editing = false; drawTeam(); };
+$("save").onclick = () => {
+  const { team, problems } = collect();
+  if (problems.length) { showProblems(problems); return; }
+  send("saveTeam", { team });
+};
+function showProblems(list) {
+  $("editnote").innerHTML = "<b>Not saved:</b><ul class='problems'>" + list.map(p => "<li>" + esc(p) + "</li>").join("") + "</ul>";
+}
+
+window.fusionJavaScriptHandler = {
+  handle: function (action, data) {
+    try {
+      const d = JSON.parse(data || "{}");
+      LOG("<-", action);
+      if (action === "state") { S = d; if (!d.has_draft) {} drawHeader(); drawComputer(); drawTeam(); }
+      else if (action === "checkResult") {
+        $("check").disabled = false;
+        if (!d.ok) { $("dot").className = "dot"; $("umsg").textContent = "Couldn't check: " + d.error; }
+      }
+      else if (action === "teamProblems") showProblems(d.problems);
+      else if (action === "saved") { if (d.what === "team") { editing = false; } $("editnote").textContent = d.note; }
+    } catch (e) { LOG("handle failed", action, e); return "FAILED"; }
+    return "OK";
+  }
+};
+(function wait() {
+  if (window.adsk && window.adsk.fusionSendData) { send("ready"); return; }
+  setTimeout(wait, 150);
+})();
+</script>
+</body>
+</html>
