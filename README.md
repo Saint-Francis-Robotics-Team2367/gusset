@@ -49,7 +49,7 @@ The full details of every tool and setting are in **[docs/REFERENCE.md](docs/REF
 ## Learning Gusset
 
 1. **Inside Fusion:** every dialog has a **How to use this** box with numbered steps and a **Why it matters** note. Hover over any box for what it does and an example value.
-2. **The student guide:** <!-- MENTOR: paste the link to the team's Gusset student guide here --> *(link coming soon)*
+2. **The reference:** [docs/REFERENCE.md](docs/REFERENCE.md) explains every tool and setting in detail.
 3. **Ask a teammate who's used it.** Then add the answer to the tips so nobody has to ask again (see [Contributing](CONTRIBUTING.md)).
 
 ## Something went wrong?
@@ -57,12 +57,12 @@ The full details of every tool and setting are in **[docs/REFERENCE.md](docs/REF
 When Gusset hits an error, it opens a window with a one-line explanation and a **What to try** box.
 
 1. Try what it suggests first.
-2. Still stuck? Press **Report problem** in that window, or open a new **[Issue](../../issues/new/choose)** here. Say what you clicked, what you expected, and paste the technical details from the error window.
+2. Still stuck? Press **Report problem** in that window, or open a new **[Issue](../../issues/new/choose)** here (any free GitHub account works). Say what you clicked, what you expected, and paste the technical details from the error window.
 3. **Use initials, not full names.** Gusset already removes your computer's user name from error details.
 
 ## Help build Gusset
 
-Gusset is built by students, for students. Bugs, better tips, and new tools are all welcome. Read **[CONTRIBUTING.md](CONTRIBUTING.md)** to set it up on your laptop, run the tests, and open a pull request. A mentor reviews every change before it reaches the team's laptops.
+Gusset is built by students, for students. The easiest way to help is to **[open an Issue](../../issues/new/choose)**: bugs, confusing tips and new ideas are all welcome. Want to change the code yourself? Read **[CONTRIBUTING.md](CONTRIBUTING.md)**. A mentor reviews every change before it reaches the team's laptops.
 
 ## For mentors
 
