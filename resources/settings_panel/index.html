@@ -21,6 +21,9 @@
   header { padding:14px 16px 10px; background:var(--card); border-bottom:1px solid var(--line); }
   .brand { display:flex; align-items:baseline; gap:10px; }
   .brand h1 { font-size:18px; margin:0; }
+  .brand .logo { width:28px; height:28px; align-self:center; }
+  .brand .logo.dk { display:none; }
+  @media (prefers-color-scheme: dark) { .brand .logo.lt { display:none; } .brand .logo.dk { display:inline; } }
   .badge { background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:1px 9px; font-size:12px; }
   .update { display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 10px; border-radius:8px; background:var(--soft); }
   .update .msg { flex:1; }
@@ -62,7 +65,7 @@
 </head>
 <body>
 <header>
-  <div class="brand"><h1>Gusset</h1><span class="badge" id="ver">version ...</span></div>
+  <div class="brand"><img class="logo lt" alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAACxAAAAsQHGLUmNAAACXklEQVR4nO2b0XGjMBCGv73J+9HBUYKvglBCOgglpIOjhCuBdOASfBXEJVACqUD3YGVG4zEggqSVsf4ZzciOJHY/rYhAazHG8Mj6oW2AtgoAbQO0VQBoG6CtJ42LikgFvAC1/WoAjsaYMbkxxphkBaiADjATpQOqpDYldL4Fxhnnv8oItLsBADTA2cPx63IGmrsFwGV99xPODTYiGlta+92ttj1Q3w0AZ53fCvcR6Gb6zvaLcX8I7fzSTC46YAFORc5blgCAA3CaMPoEHAKMOYR2fjOAhdkaQtzNnah6yQqAxnrNAgCXHZzKHVsVwEK4J/mfrQ3gOBHurbYT0QHYsFfft8covk+D7dXn38aYs2ffrOX7PqBx6u97cR78Afx06kMEO9T08G+ECgBtA7RVAGgboK0CQNsAbamcC6yRiByAvyu7nY0xbz4NswfA5Sn0eWWfZxGpjDHtUsM9L4FXn0b3EAEj8M+zbQ38WjN49gDsg1fj01ZEOuDPmvH3vAS8VABoG6CtAkDbAG0VANoGaMsXwKdTryPYEUq1U/+cauTKF8DJqb/aB5SsZG1yt78nn36+APqrzx8i0tlsL1WJSGV3gB9Xf+q9BrjnozGmE6+OQY/G7MWyORxlPvGqZ8WR3XcurnY8znLi1eokii3GdBPhFzxBgg2JV9EAOIbNzUgbwPl2IeI2gQ41QymSpDaPGQ1AyNlKEVXRADgOfGu9pryvRAPgOFMvzSR7TJW9AaLhEZOlb4BoJ8JbdXeZDICFkN0PJsQallQ5/WRGBUBOKm+EtA3QVgGgbYC2Hh7Af443zwNS5dJGAAAAAElFTkSuQmCC"><img class="logo dk" alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAACxAAAAsQHGLUmNAAACX0lEQVR4nO1b23GDMBBcZ/IfSnAHoYMoHaSDUIJLIB24BEpIB6EEpwNKcCrYfIBnZAfICUs6HtoZzQisk1YryUjHsSOJLeNBm4A2kgDaBLSRBNAmoI1HpXYzAAZA3l2fANQAztGZkIydSpJn/sW5+y0qn5iNvZFsejp+i6YruxoBcpL1QGfP7J8N7GzyJQuQkTwOdO5E0lhlTXevD8eurkUJcODwOi9G7IoRu8MSBDAcXuclZSOZdWX74F0EXxXtObzOP7vfp9T5adXT+O68DwHGRqvh9Tq/d1YFeTLcY1ww8nqdiwCGSv/YcxBg6LFWM8IzW1uAqqfjDSPu2kKkHSlyiRkAX9b1D4AjgNL/6SQupKfBwsr/oBXk5JuMBqT+gNzKV1hJ5wG5AM9Wvg7AQw1TPELxnRYBsXmXWBJAm4A2kgDaBLSxeQG03gu4IEe77XZBg3ab3vxXcAkCZABeHG1eAOzRbtlHseYlIBJtCTOgAfAhLLsH8O5SufQ4bBd6xXzPAwbXx/bdfwZrXgIiJAG0CWgjCaBNQBtJAG0CnpG5GkgF+Lbyb66NRISx8t9DhWxIBbC9wAWuvcRzQY5r973Icy0VoLLyT2h3gqXQNgZKtJyerHuVyHLhr8aGAq8qaR2uDc7l5ehY4NXRpa4pjRvqvR53CbwKJsAlFYwbIDE18CqYAJcRKXtIkf5DZPpQ8s4Z52t09gwfJGWjnlhnMAF8jlaMWRVMgEvabKDk7UhuNlTWTpsNlr5Nmw2Xv00lZ/TBhNQt7huz+WRGS4DZYG0eIWckAbQJaCMJoE1AG7+2pCZXs+clCQAAAABJRU5ErkJggg=="><h1>Gusset</h1><span class="badge" id="ver">version ...</span></div>
   <div class="update"><span class="dot" id="dot"></span><span class="msg" id="umsg">Checking...</span>
     <button id="check">Check for updates</button><button class="primary hidden" id="install">Update now</button></div>
 </header>
