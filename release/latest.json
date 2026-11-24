@@ -1,10 +1,9 @@
 {
-  "version": "0.13.2",
-  "zip": "https://github.com/Saint-Francis-Robotics-Team2367/gusset/releases/download/v0.13.2/Gusset-0.13.2.zip",
-  "sha256": "0c37116e0b8d0f57761085f23660ffb536d5d5f11a20714eaf30a41bf54d6376",
-  "released": "2026-11-23",
+  "version": "0.13.3",
+  "zip": "https://github.com/Saint-Francis-Robotics-Team2367/gusset/releases/download/v0.13.3/Gusset-0.13.3.zip",
+  "sha256": "f60b8b5f104be7c78f55ede1c4fd5304b95fa13e763562529d8143fb778788f9",
+  "released": "2026-11-24",
   "notes": [
-    "Fixed: Add to Library could say \"Gusset couldn't start saving to the library\" and save nothing, even after restarting Gusset. It now waits for the dialog to close and saves the part",
-    "Linked part files from Shaft & Spacer and Tube use the same, more reliable start-up step"
+    "Gusset has a logo! It shows in the Settings window and in Fusion's Scripts and Add-Ins list."
   ]
 }
