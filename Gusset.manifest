@@ -6,7 +6,7 @@
   "description": {
     "": "Gusset: FRC tools for Fusion - team part numbers, naming checks, and more."
   },
-  "version": "0.13.2",
+  "version": "0.13.3",
   "runOnStartup": true,
   "supportedOS": "windows|mac",
   "editEnabled": true,

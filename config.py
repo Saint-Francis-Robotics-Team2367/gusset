@@ -5,7 +5,7 @@ gusset_config.json and are edited with the Settings button).
 
 import os
 
-VERSION = "0.13.2"
+VERSION = "0.13.3"
 
 # Updates: the public GitHub repo ("owner/name") that holds release/latest.json and
 # team_settings.json. Leave "OWNER/gusset" until the repo exists - updates stay off.
