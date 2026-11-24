@@ -10,6 +10,7 @@ Every version of Gusset, newest first. Each "- " line under a version shows in t
 **Adding to this file:** add your line under **Unreleased** in your pull request. A mentor renames it to the version number when releasing. One line per change: say what changed, for the person using it.
 
 ## Unreleased
+- Gusset has a logo! It shows in the Settings window and in Fusion's Scripts and Add-Ins list.
 
 ## 0.13.2 - Add to Library fix
 
