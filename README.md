@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/banner-dark.png">
+    <img src="docs/images/banner-light.png" alt="Gusset" width="100%">
+  </picture>
+</p>
+
 # Gusset
 
 **FRC design tools for Autodesk Fusion, built by our team for our team.**

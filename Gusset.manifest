@@ -10,5 +10,5 @@
   "runOnStartup": true,
   "supportedOS": "windows|mac",
   "editEnabled": true,
-  "iconFilename": ""
+  "iconFilename": "resources/logo/logo-light-64.png"
 }
